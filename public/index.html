@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>Trading Terminal — Live Buy/Sell Signals</title>
+    <link rel="icon" href="/favicon.svg" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">▲</div>
+        <div>
+          <div class="brand-name">TRADING<span>TERMINAL</span></div>
+          <div class="brand-sub">india · gold · btc · eth</div>
+        </div>
+      </div>
+
+      <div class="ticker-strip" id="tickerStrip"></div>
+
+      <div class="topbar-right">
+        <div class="tf-group" id="tfGroup"></div>
+        <button class="sound-btn" id="soundBtn" title="Alert sound on new signals">🔕</button>
+        <a class="rep-link" href="/reports.html" title="Performance report">Reports</a>
+        <div class="conn" id="conn">
+          <span class="dot"></span><span id="connText">connecting…</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="pulse-bar" id="pulseBar">
+      <div class="pulse-loading">Loading market data…</div>
+    </div>
+
+    <main class="layout">
+      <aside class="panel watchlist">
+        <div class="panel-head">
+          <h2>Watchlist</h2>
+          <div class="head-actions">
+            <select id="sortSel" class="mini-select" title="Sort">
+              <option value="default">Default</option>
+              <option value="signal">Signal strength</option>
+              <option value="change">Change %</option>
+            </select>
+            <button class="icon-btn" id="addBtn" title="Add symbol">+</button>
+          </div>
+        </div>
+        <div class="tabs" id="marketTabs"></div>
+        <div class="table-wrap">
+          <table class="scan-table">
+            <thead>
+              <tr>
+                <th>Symbol</th>
+                <th class="ta-r">Price</th>
+                <th class="ta-r">Chg%</th>
+                <th>Signal</th>
+                <th class="ta-r">Conf</th>
+              </tr>
+            </thead>
+            <tbody id="scanBody"></tbody>
+          </table>
+        </div>
+        <div class="watch-foot">
+          <span id="watchMeta">—</span>
+          <span id="lastTick">—</span>
+        </div>
+      </aside>
+
+      <section class="center">
+        <div class="panel signal-panel" id="signalPanel">
+          <div class="placeholder">
+            <div class="ph-title">Select a market</div>
+            <div class="ph-sub">Pick any symbol from the watchlist to see the live signal, entry, stop-loss and targets.</div>
+          </div>
+        </div>
+
+        <div class="panel chart-panel">
+          <div class="chart-head">
+            <div class="chart-title" id="chartTitle">—</div>
+            <div class="chart-legend" id="chartLegend"></div>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="chart"></canvas>
+            <div class="chart-empty" id="chartEmpty">No chart data</div>
+            <div class="chart-tip" id="chartTip"></div>
+          </div>
+        </div>
+
+        <div class="panel indicators-panel" id="indicatorsPanel">
+          <div class="panel-head"><h2>Indicators</h2><span class="hint">same engine used in backtest</span></div>
+          <div class="ind-grid" id="indGrid"></div>
+        </div>
+      </section>
+
+      <aside class="right-col">
+        <div class="panel feed-panel">
+          <div class="panel-head">
+            <h2>Signal feed</h2>
+            <span class="count-pill" id="feedCount">0</span>
+          </div>
+          <div class="feed" id="signalFeed">
+            <div class="empty">No signals yet for this timeframe.</div>
+          </div>
+        </div>
+
+        <div class="panel backtest-panel" id="backtestPanel">
+          <div class="panel-head"><h2>Backtest</h2><span class="hint" id="btHint">—</span></div>
+          <div class="empty">Select a market to run the strategy on its history.</div>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="foot">
+      Data: Binance / Bybit / OKX (BTCUSD, ETHUSD) · Yahoo Finance (NSE indices &amp; stocks, gold futures).
+      Signals are technical studies, not financial advice.
+    </footer>
+
+    <div class="toast" id="toast"></div>
+
+    <div class="modal" id="addModal" hidden>
+      <form class="modal-card" id="addForm">
+        <h3>Add symbol</h3>
+        <p>Any Yahoo or crypto ticker works.</p>
+        <input id="addInput" autocomplete="off" placeholder="e.g. XAUUSD, BTCUSD, ETHUSD, NIFTY.NS" />
+        <div class="examples">
+          <button type="button" data-ex="NIFTY.NS">NIFTY.NS</button>
+          <button type="button" data-ex="XAUUSD">XAUUSD</button>
+          <button type="button" data-ex="BTCUSD">BTCUSD</button>
+          <button type="button" data-ex="ETHUSD">ETHUSD</button>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn ghost" id="addCancel">Cancel</button>
+          <button type="submit" class="btn primary">Add</button>
+        </div>
+      </form>
+    </div>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

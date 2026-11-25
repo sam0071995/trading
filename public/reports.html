@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>Performance Report — Trading Terminal</title>
+    <link rel="icon" href="/favicon.svg" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="reports-body">
+    <header class="topbar report-top">
+      <a class="brand" href="/">
+        <div class="logo">▲</div>
+        <div>
+          <div class="brand-name">TRADING<span>TERMINAL</span></div>
+          <div class="brand-sub">india · gold · btc · eth</div>
+        </div>
+      </a>
+
+      <div class="rep-range">
+        <label class="rep-date">From <input type="date" id="repFrom" /></label>
+        <label class="rep-date">To <input type="date" id="repTo" /></label>
+        <button class="btn primary" id="repApply">Apply</button>
+        <div class="rep-presets" id="repPresets">
+          <button type="button" data-days="0">Today</button>
+          <button type="button" data-days="6">7D</button>
+          <button type="button" data-days="29">30D</button>
+          <button type="button" data-days="all">All</button>
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        <a class="rep-link" href="/">← Terminal</a>
+      </div>
+    </header>
+
+    <main class="reports">
+      <div class="rep-head">
+        <div>
+          <h1>Performance report</h1>
+          <div class="rep-sub" id="repMeta">Loading…</div>
+        </div>
+        <div class="rep-tabs" id="repTabs">
+          <button type="button" class="active" data-tab="overview">Overview</button>
+          <button type="button" data-tab="daily">Daily</button>
+          <button type="button" data-tab="losses">Loss report</button>
+        </div>
+      </div>
+
+      <section class="rep-kpis" id="repKpis"></section>
+
+      <div class="rep-groups" id="repGroups"></div>
+
+      <section class="rep-panel" id="repOverview">
+        <div class="rep-panel-head">
+          <h2>Profit &amp; loss</h2>
+          <span class="hint">closed trades · target + SL + other = trades</span>
+        </div>
+        <div class="table-wrap">
+          <table class="rep-table">
+            <thead>
+              <tr>
+                <th>Market</th>
+                <th class="ta-r">Trades</th>
+                <th class="ta-r">Target hit</th>
+                <th class="ta-r">SL hit</th>
+                <th class="ta-r">Other</th>
+                <th class="ta-r">Profit</th>
+                <th class="ta-r">Loss</th>
+                <th class="ta-r">Net R</th>
+              </tr>
+            </thead>
+            <tbody id="repPlBody"></tbody>
+          </table>
+        </div>
+
+        <div class="rep-panel-head" style="margin-top: 19px">
+          <h2>By symbol</h2>
+          <span class="hint" id="repScopeHint">all groups</span>
+        </div>
+        <div class="table-wrap">
+          <table class="rep-table">
+            <thead>
+              <tr>
+                <th>Symbol</th>
+                <th class="ta-r">Trades</th>
+                <th class="ta-r">Target hit</th>
+                <th class="ta-r">SL hit</th>
+                <th class="ta-r">Other</th>
+                <th class="ta-r">Profit</th>
+                <th class="ta-r">Loss</th>
+                <th class="ta-r">Net R</th>
+              </tr>
+            </thead>
+            <tbody id="repSymBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="rep-panel" id="repDaily" hidden>
+        <div class="rep-panel-head">
+          <h2>Day by day</h2>
+          <span class="hint" id="repDailyHint">all groups · IST dates</span>
+        </div>
+        <div class="rep-equity" id="repEquity"></div>
+        <div class="table-wrap">
+          <table class="rep-table">
+            <thead>
+              <tr>
+                <th>Date (IST)</th>
+                <th class="ta-r">Signals</th>
+                <th class="ta-r">Closed</th>
+                <th class="ta-r">Target</th>
+                <th class="ta-r">SL</th>
+                <th class="ta-r">Other</th>
+                <th class="ta-r">Win %</th>
+                <th class="ta-r">Day R</th>
+                <th class="ta-r">Cum R</th>
+              </tr>
+            </thead>
+            <tbody id="repDailyBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="rep-panel" id="repLosses" hidden>
+        <div class="rep-panel-head">
+          <h2>Loss report</h2>
+          <span class="hint" id="repLossHint">closed trades with negative R</span>
+        </div>
+        <div class="rep-loss-summary" id="repLossSummary"></div>
+        <div class="table-wrap">
+          <table class="rep-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Symbol</th>
+                <th>TF</th>
+                <th>Side</th>
+                <th>Exit</th>
+                <th class="ta-r">Entry</th>
+                <th class="ta-r">Stop</th>
+                <th class="ta-r">Exit px</th>
+                <th class="ta-r">R</th>
+                <th class="ta-r">Conf</th>
+              </tr>
+            </thead>
+            <tbody id="repLossBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <footer class="foot">
+      Reports are built from the signal log (entries and exits). R = risk multiple: −1 is a full stop,
+      T1 books half and moves the stop to break-even. Educational study, not financial advice.
+    </footer>
+
+    <script type="module" src="/reports.js"></script>
+  </body>
+</html>
