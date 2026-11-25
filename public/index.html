@@ -28,6 +28,14 @@
           <span class="dot"></span><span id="connText">connecting…</span>
         </div>
       </div>
+
+      <div class="mob-ctl">
+        <div class="mob-tf">
+          <span class="mob-label">Timeframe</span>
+          <div class="tf-group" id="tfGroupM"></div>
+        </div>
+        <div class="tabs mob-markets" id="marketTabsM"></div>
+      </div>
     </header>
 
     <div class="pulse-bar" id="pulseBar">
@@ -37,7 +45,7 @@
     <main class="layout">
       <aside class="panel watchlist">
         <div class="panel-head">
-          <h2>Watchlist</h2>
+          <h2><span class="h2-desk">Watchlist</span><span class="h2-mob">Signals</span></h2>
           <div class="head-actions">
             <select id="sortSel" class="mini-select" title="Sort">
               <option value="default">Default</option>
@@ -48,6 +56,7 @@
           </div>
         </div>
         <div class="tabs" id="marketTabs"></div>
+        <div class="m-cards" id="mCards"></div>
         <div class="table-wrap">
           <table class="scan-table">
             <thead>
@@ -88,14 +97,14 @@
           </div>
         </div>
 
-        <div class="panel indicators-panel" id="indicatorsPanel">
+        <div class="panel indicators-panel m-collapsible" id="indicatorsPanel">
           <div class="panel-head"><h2>Indicators</h2><span class="hint">same engine used in backtest</span></div>
           <div class="ind-grid" id="indGrid"></div>
         </div>
       </section>
 
       <aside class="right-col">
-        <div class="panel feed-panel">
+        <div class="panel feed-panel m-collapsible" id="feedPanel">
           <div class="panel-head">
             <h2>Signal feed</h2>
             <span class="count-pill" id="feedCount">0</span>
@@ -105,7 +114,7 @@
           </div>
         </div>
 
-        <div class="panel backtest-panel" id="backtestPanel">
+        <div class="panel backtest-panel m-collapsible" id="backtestPanel">
           <div class="panel-head"><h2>Backtest</h2><span class="hint" id="btHint">—</span></div>
           <div class="empty">Select a market to run the strategy on its history.</div>
         </div>

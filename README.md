@@ -88,6 +88,18 @@ GitHub Pages cannot host this app — it needs a long-running Node process, not 
 
 Timeframes: `1m 5m 15m 1h 4h 1d`.
 
+### On a phone
+
+The page switches to a mobile layout below 760px:
+
+1. **Timeframe first** — a sticky row at the top (1m…1d) plus the market filter chips.
+2. **Signals list** — every symbol for that timeframe as a tap-to-expand card: live price, change,
+   BUY/SELL/EXIT badge and confidence. Tapping one expands the locked plan (entry, stop, T1–T3,
+   risk), the live R bar, and collapsible **market checks**, **strategy scan** and **why/watch-out**
+   notes. Only one card is open at a time, and the chart below follows the open symbol.
+3. **Chart and panels** — the chart keeps a fixed height and Indicators / Backtest / Signal feed are
+   collapsible, so live ticks update in place without the page jumping up and down.
+
 Add any symbol with the **+** button: `NIFTY.NS`, `BTCUSD`, `ETHUSD`, `XAUTUSD`, `XAUUSD`, `AAPL`…
 Crypto pairs (`BTCUSD`, `XAUTUSD`, `BTC-USD`) and Yahoo tickers both work.
 

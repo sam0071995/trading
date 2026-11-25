@@ -17,7 +17,11 @@ const state = {
   detailTimer: null,
   lastSnapshot: 0,
   lastDetail: 0,
+  openCard: null,
 };
+
+const MOBILE_Q = '(max-width: 760px)';
+const mobile = () => window.matchMedia(MOBILE_Q).matches;
 
 /* ------------------------------------------------------------------ */
 /* formatting                                                          */
@@ -125,24 +129,35 @@ function tickClock() {
 function buildTfButtons() {
   const tfs = state.config?.tfs || ['1m', '5m', '15m', '1h', '4h', '1d'];
   if (!tfs.includes(state.tf)) state.tf = '15m';
-  $('tfGroup').innerHTML = tfs
+  const html = tfs
     .map((t) => `<button data-tf="${t}" class="${t === state.tf ? 'active' : ''}">${t}</button>`)
     .join('');
-  $('tfGroup').onclick = (e) => {
-    const btn = e.target.closest('button[data-tf]');
-    if (!btn || btn.dataset.tf === state.tf) return;
-    state.tf = btn.dataset.tf;
-    localStorage.setItem('tt_tf', state.tf);
-    buildTfButtons();
-    state.rows = [];
-    state.bySymbol.clear();
-    clearTable();
-    connect();
-    if (state.selected) fetchDetail();
-    else autoSelect();
+  for (const el of [$('tfGroup'), $('tfGroupM')]) {
+    if (!el) continue;
+    el.innerHTML = html;
+    el.onclick = (e) => {
+      const btn = e.target.closest('button[data-tf]');
+      if (btn) setTf(btn.dataset.tf);
+    };
+  }
+}
 
-    $('signalPanel').innerHTML = `<div class="placeholder"><div class="ph-title">Loading ${state.tf} data…</div><div class="ph-sub">Fetching candles for the selected timeframe.</div></div>`;
-  };
+function setTf(tf) {
+  if (!tf || tf === state.tf) return;
+  state.tf = tf;
+  localStorage.setItem('tt_tf', state.tf);
+  buildTfButtons();
+  state.rows = [];
+  state.bySymbol.clear();
+  clearTable();
+  clearCards();
+  closeCard();
+  connect();
+  if (state.selected) fetchDetail();
+  else autoSelect();
+
+  $('signalPanel').innerHTML = `<div class="placeholder"><div class="ph-title">Loading ${state.tf} data…</div><div class="ph-sub">Fetching candles for the selected timeframe.</div></div>`;
+  if (mobile()) window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function buildTabs() {
@@ -155,17 +170,26 @@ function buildTabs() {
   if (counts.custom) tabs.push({ id: 'custom', label: 'Custom', n: counts.custom });
   if (!tabs.find((t) => t.id === state.market)) state.market = 'all';
 
-  $('marketTabs').innerHTML = tabs
+  const html = tabs
     .map((t) => `<button data-market="${t.id}" class="${t.id === state.market ? 'active' : ''}">${esc(t.label)} <span class="dim">${t.n}</span></button>`)
     .join('');
-  $('marketTabs').onclick = (e) => {
-    const btn = e.target.closest('button[data-market]');
-    if (!btn) return;
-    state.market = btn.dataset.market;
-    localStorage.setItem('tt_market', state.market);
-    buildTabs();
-    renderTable();
-  };
+  for (const el of [$('marketTabs'), $('marketTabsM')]) {
+    if (!el) continue;
+    el.innerHTML = html;
+    el.onclick = (e) => {
+      const btn = e.target.closest('button[data-market]');
+      if (btn) setMarket(btn.dataset.market);
+    };
+  }
+}
+
+function setMarket(id) {
+  if (!id || id === state.market) return;
+  state.market = id;
+  localStorage.setItem('tt_market', state.market);
+  buildTabs();
+  renderTable();
+  renderCards();
 }
 
 function bindUi() {
@@ -182,6 +206,7 @@ function bindUi() {
   $('sortSel').onchange = (e) => {
     state.sort = e.target.value;
     renderTable();
+    renderCards();
   };
 
   $('addBtn').onclick = () => {
@@ -213,22 +238,22 @@ function bindUi() {
     }
   };
 
-  $('signalPanel').addEventListener('click', async (e) => {
+  $('signalPanel').addEventListener('click', (e) => {
     const btn = e.target.closest('[data-remove]');
-    if (!btn) return;
-    const sym = btn.dataset.remove;
-    if (!confirm(`Remove ${sym} from the watchlist?`)) return;
-    const res = await fetch(`/api/watch/remove?symbol=${encodeURIComponent(sym)}`);
-    const data = await res.json();
-    if (res.ok) {
-      if (state.selected === sym) state.selected = null;
-      applyConfig(data.config);
-      state.rows = state.rows.filter((r) => r.symbol !== sym);
-      state.bySymbol.delete(sym);
-      renderTable();
-      renderAll();
+    if (btn) removeSymbol(btn.dataset.remove);
+  });
+
+  $('mCards').addEventListener('click', (e) => {
+    const head = e.target.closest('.mc-head');
+    if (head) return toggleCard(head.closest('.m-card').dataset.symbol);
+    const rm = e.target.closest('[data-remove]');
+    if (rm) return removeSymbol(rm.dataset.remove);
+    if (e.target.closest('[data-scrollchart]')) {
+      document.querySelector('.chart-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   });
+
+  setupCollapsible();
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') $('addModal').hidden = true;
@@ -239,6 +264,35 @@ function bindUi() {
     if (sym) selectSymbol(sym);
     hideToast();
   };
+}
+
+function setupCollapsible() {
+  if (!mobile()) return;
+  for (const id of ['indicatorsPanel', 'backtestPanel', 'feedPanel']) {
+    const panel = $(id);
+    const head = panel?.querySelector('.panel-head');
+    if (!panel || !head) continue;
+    if (localStorage.getItem(`tt_open_${id}`) !== '1') panel.classList.add('collapsed');
+    head.addEventListener('click', () => {
+      const collapsed = panel.classList.toggle('collapsed');
+      localStorage.setItem(`tt_open_${id}`, collapsed ? '0' : '1');
+    });
+  }
+}
+
+async function removeSymbol(sym) {
+  if (!sym || !confirm(`Remove ${sym} from the watchlist?`)) return;
+  const res = await fetch(`/api/watch/remove?symbol=${encodeURIComponent(sym)}`);
+  const data = await res.json();
+  if (!res.ok) return;
+  if (state.selected === sym) state.selected = null;
+  applyConfig(data.config);
+  state.rows = state.rows.filter((r) => r.symbol !== sym);
+  state.bySymbol.delete(sym);
+  if (state.openCard === sym) closeCard();
+  renderTable();
+  renderCards();
+  renderAll();
 }
 
 /* ------------------------------------------------------------------ */
@@ -252,6 +306,7 @@ function onSnapshot(data) {
   state.signals = data.signals || [];
   state.lastSnapshot = data.ts || Date.now();
   renderTable();
+  renderCards();
   renderPulse(data.pulse);
   renderTicker();
   renderFeed();
@@ -469,6 +524,268 @@ function updateRow(node, r) {
   ]
     .filter(Boolean)
     .join('\n');
+}
+
+/* ------------------------------------------------------------------ */
+/* mobile signal cards (accordion)                                     */
+/* ------------------------------------------------------------------ */
+
+const cardMap = new Map();
+
+function clearCards() {
+  cardMap.clear();
+  const wrap = $('mCards');
+  if (wrap) wrap.innerHTML = '';
+}
+
+function cardSigKey(r) {
+  const b = r.book || {};
+  const checks = r.strategy?.checklist?.map((c) => (c.ok === true ? 1 : c.ok === false ? 0 : 2)).join('') || '';
+  const setups = r.strategy?.setups?.map((s) => `${s.state?.[0] || ''}${s.dir?.[0] || ''}`).join('') || '';
+  const notes = `${r.topReason || ''}|${(r.warnings || []).join('|')}`;
+  return [
+    r.signal,
+    r.state,
+    r.confidence,
+    r.entry,
+    r.sl,
+    (r.targets || []).join(','),
+    b.status,
+    b.be ? 1 : 0,
+    b.tp1Hit ? 1 : 0,
+    b.tp2Hit ? 1 : 0,
+    b.exit?.at || '',
+    r.strategy?.passed,
+    r.strategy?.evaluated,
+    checks,
+    setups,
+    notes,
+  ].join('|');
+}
+
+function renderCards() {
+  const wrap = $('mCards');
+  if (!wrap || !state.config) return;
+  const list = filteredRows();
+  if (!list.length) {
+    cardMap.clear();
+    closeCard();
+    wrap.innerHTML = `<div class="empty">${state.rows.length ? 'No symbols in this market.' : 'Waiting for market data…'}</div>`;
+    return;
+  }
+  if (wrap.querySelector('.empty')) wrap.innerHTML = '';
+  const seen = new Set();
+  list.forEach((r, i) => {
+    seen.add(r.symbol);
+    let node = cardMap.get(r.symbol);
+    if (!node) {
+      node = createCard();
+      cardMap.set(r.symbol, node);
+    }
+    updateCard(node, r);
+    if (wrap.children[i] !== node.el) wrap.insertBefore(node.el, wrap.children[i] || null);
+  });
+  for (const [sym, node] of [...cardMap]) {
+    if (!seen.has(sym)) {
+      node.el.remove();
+      cardMap.delete(sym);
+      if (state.openCard === sym) closeCard();
+    }
+  }
+}
+
+function createCard() {
+  const el = document.createElement('article');
+  el.className = 'm-card';
+  el.innerHTML = `
+    <button type="button" class="mc-head">
+      <span class="mc-id"><b class="mc-sym"></b><small class="mc-sub"></small></span>
+      <span class="mc-px"><b class="mc-price"></b><small class="mc-chg"></small></span>
+      <span class="mc-sig"><span class="badge neutral mc-badge">—</span><small class="mc-conf"></small></span>
+      <span class="mc-chev">▾</span>
+    </button>
+    <div class="mc-body"></div>`;
+  return {
+    el,
+    body: el.querySelector('.mc-body'),
+    sym: el.querySelector('.mc-sym'),
+    sub: el.querySelector('.mc-sub'),
+    price: el.querySelector('.mc-price'),
+    chg: el.querySelector('.mc-chg'),
+    badge: el.querySelector('.mc-badge'),
+    conf: el.querySelector('.mc-conf'),
+    key: '',
+  };
+}
+
+function updateCard(node, r) {
+  if (node.el.dataset.symbol !== r.symbol) {
+    node.el.dataset.symbol = r.symbol;
+    node.sym.textContent = r.symbol;
+  }
+  const info = state.configBySymbol.get(r.symbol) || {};
+  const sub = [r.name || info.name || '', r.strategy?.name || ''].filter(Boolean).join(' · ');
+  if (node.sub.textContent !== sub) node.sub.textContent = sub;
+
+  if (r.pending) {
+    node.price.textContent = '…';
+    node.chg.textContent = '';
+    node.badge.className = 'badge neutral mc-badge';
+    node.badge.textContent = 'LOAD';
+    node.conf.textContent = '';
+    return;
+  }
+
+  const dec = r.decimals ?? 2;
+  node.price.textContent = fmt(r.price, dec);
+  node.chg.textContent = fmtPct(r.chgPct);
+  node.chg.className = `mc-chg ${cls(r.chgPct)}`;
+
+  const b = r.book || {};
+  if (b.status === 'CLOSED' && b.exit) {
+    const xr = `${b.exit.r >= 0 ? '+' : ''}${Number(b.exit.r || 0).toFixed(1)}R`;
+    node.badge.className = 'badge exit mc-badge';
+    node.badge.textContent = 'EXIT';
+    node.conf.textContent = xr;
+  } else {
+    const sig = r.signal || 'NEUTRAL';
+    const k = sig === 'BUY' ? 'buy' : sig === 'SELL' ? 'sell' : 'neutral';
+    node.badge.className = `badge ${k} mc-badge`;
+    node.badge.textContent = sig === 'NEUTRAL' ? 'FLAT' : sig;
+    node.conf.textContent = r.confidence ? `${r.confidence}%` : b.status === 'OPEN' ? b.dir : '';
+  }
+
+  if (!node.el.classList.contains('open')) return;
+  const key = cardSigKey(r);
+  if (key !== node.key) {
+    node.key = key;
+    renderCardBody(node, r);
+    return;
+  }
+  if (b.status === 'OPEN') {
+    const live = node.body.querySelector('[data-live-r]');
+    if (live) live.textContent = `${b.pnlR >= 0 ? '+' : ''}${Number(b.pnlR || 0).toFixed(2)}R`;
+    const now = node.body.querySelector('[data-now]');
+    if (now) now.textContent = fmt(r.price, dec);
+  }
+}
+
+const mcell = (label, val, klass) => `<div class="${klass}"><span>${label}</span><b>${val}</b></div>`;
+
+function renderCardBody(node, r) {
+  if (!r || r.pending) {
+    node.body.innerHTML = `<div class="mc-flat">Loading candles…</div>`;
+    return;
+  }
+  const dec = r.decimals ?? 2;
+  const b = r.book || {};
+  const open = b.status === 'OPEN';
+  const closed = b.status === 'CLOSED' && !!b.exit;
+  const dir = open ? b.dir : r.signal;
+  const k = dir === 'BUY' ? 'buy' : dir === 'SELL' ? 'sell' : 'neutral';
+  const targets = (b.targets && b.targets.length ? b.targets : r.targets) || [];
+  const rText = (v) => `${v >= 0 ? '+' : ''}${Number(v || 0).toFixed(2)}R`;
+
+  const bar = open
+    ? `<div class="trade-bar ${k}">
+        <span class="tb-tag">LIVE ${esc(b.dir)}</span>
+        <span>Entry ${fmt(b.entry, dec)} · now <b data-now>${fmt(r.price, dec)}</b> · <b data-live-r>${rText(b.pnlR)}</b></span>
+        ${b.tp2Hit ? '<span class="tb-sub">trailing to T1</span>' : b.be ? '<span class="tb-sub">stop at break-even</span>' : b.tp1Hit ? '<span class="tb-sub">T1 booked · stop moved</span>' : ''}
+      </div>`
+    : closed
+      ? `<div class="trade-bar exit">
+          <span class="tb-tag">EXIT</span>
+          <span>${esc(b.exit.reason)} at ${fmt(b.exit.price, dec)} · <b>${rText(b.exit.r)}</b></span>
+        </div>`
+      : '';
+
+  const plan =
+    open || closed
+      ? `<div class="mplan">
+          ${mcell('Entry', fmt(b.entry ?? r.entry, dec), 'entry')}
+          ${mcell('Stop', fmt(b.stop ?? b.sl ?? r.sl, dec), 'sl')}
+          ${mcell('T1', fmt(targets[0], dec), 'tp')}
+          ${mcell('T2', fmt(targets[1], dec), 'tp')}
+          ${mcell('T3', fmt(targets[2], dec), 'tp')}
+          ${mcell('Risk', b.riskPct != null ? `${b.riskPct}%` : r.riskPct != null ? `${r.riskPct}%` : '—', 'risk')}
+        </div>`
+      : `<div class="mc-flat">${esc(r.topReason || 'No trade — the engine is scanning for a setup on this timeframe.')}</div>`;
+
+  const st = r.strategy || {};
+  const checks = Array.isArray(st.checklist) && st.checklist.length
+    ? `<details>
+        <summary>Market checks <em>${st.passed}/${st.evaluated} passed</em></summary>
+        <div class="checks">${st.checklist
+          .map(
+            (c) => `<div class="chk ${c.ok === true ? 'ok' : c.ok === false ? 'no' : 'na'}">
+              <span class="chk-ic">${c.ok === true ? '✓' : c.ok === false ? '✗' : '–'}</span>
+              <span class="chk-l">${esc(c.label)}</span>
+              <span class="chk-n">${esc(c.note)}</span>
+            </div>`,
+          )
+          .join('')}</div>
+      </details>`
+    : '';
+
+  const setups = Array.isArray(st.setups) && st.setups.length
+    ? `<details>
+        <summary>Strategy scan <em>${st.setups.filter((s) => s.state === 'FIRED' || s.state === 'READY').length} of ${st.setups.length} active</em></summary>
+        <div class="scan">${st.setups
+          .map(
+            (s) => `<div class="scan-row ${s.state === 'FIRED' ? 'fired' : s.state === 'READY' ? 'ready' : ''}">
+              <span class="scan-name">${esc(s.name)}</span>
+              <span class="scan-dir ${s.dir === 'BUY' ? 'b' : s.dir === 'SELL' ? 's' : ''}">${esc(s.dir || '—')}</span>
+              <span class="scan-score"><i style="width:${Math.max(0, Math.min(100, s.score || 0))}%"></i></span>
+              <span class="scan-st">${esc(s.state)}</span>
+              <span class="scan-note">${esc(s.note || '')}</span>
+            </div>`,
+          )
+          .join('')}</div>
+      </details>`
+    : '';
+
+  const notes = [r.topReason, ...(r.warnings || [])].filter(Boolean);
+  const noteBlock = notes.length
+    ? `<details>
+        <summary>Why / watch out <em>${notes.length}</em></summary>
+        <div class="mc-notes">${notes.map((n) => `<div class="mc-note">${esc(n)}</div>`).join('')}</div>
+      </details>`
+    : '';
+
+  const custom = state.configBySymbol.get(r.symbol)?.custom;
+  node.body.innerHTML = `
+    ${bar}
+    ${plan}
+    <div class="macc">${checks}${setups}${noteBlock}</div>
+    <div class="mc-actions">
+      <button type="button" class="btn ghost" data-scrollchart>Chart &amp; indicators ↓</button>
+      ${custom ? `<button type="button" class="btn ghost mc-remove" data-remove="${esc(r.symbol)}">Remove</button>` : ''}
+    </div>`;
+}
+
+function toggleCard(sym) {
+  if (!sym) return;
+  if (state.openCard === sym) return closeCard();
+  const node = cardMap.get(sym);
+  if (!node) return;
+  closeCard();
+  state.openCard = sym;
+  node.el.classList.add('open');
+  const row = state.bySymbol.get(sym);
+  node.key = row ? cardSigKey(row) : '';
+  renderCardBody(node, row || { symbol: sym, pending: true });
+  selectSymbol(sym);
+  requestAnimationFrame(() => {
+    const head = node.el.querySelector('.mc-head');
+    const barBottom = document.querySelector('.topbar')?.getBoundingClientRect().bottom || 0;
+    const top = head.getBoundingClientRect().top;
+    if (top < barBottom + 6) window.scrollBy({ top: top - barBottom - 10, behavior: 'smooth' });
+  });
+}
+
+function closeCard() {
+  if (state.openCard) cardMap.get(state.openCard)?.el.classList.remove('open');
+  state.openCard = null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -1337,6 +1654,7 @@ function compact(v) {
 
 function renderAll() {
   renderTable();
+  renderCards();
   const p = pulseFromRows(state.rows);
   renderPulse(p);
   renderTicker();
